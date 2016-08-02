@@ -1,0 +1,17 @@
+{
+  "name": "pgmap",
+  "version": "0.0.1",
+  "author": "Fiaxhs <lowreg@gmail.com>",
+  "description": "Pokevision for one.",
+  "main": "app.js",
+  "dependencies": {
+    "cassandra-driver": "^3.1.1",
+    "express": "^4.14.0",
+    "long": "^3.2.0",
+    "pokemon-go-node-api": "Armax/Pokemon-GO-node-api",
+    "pug": "^2.0.0-beta4"
+  },
+  "scripts": {
+    "start": "node app.js"
+  }
+}

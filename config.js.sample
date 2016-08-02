@@ -1,0 +1,16 @@
+var config = {
+    login: {
+        username: '', // Your google email or Pokemon Trainer id
+        password: '', // Your password (eh.)
+        provider: ''  // Either 'google' or 'ptc'
+    },
+    initialposition: {
+        latitude: 48.869147,
+        longitude: 2.3251892
+    },
+    app: {
+        port: 3000
+    }
+};
+
+module.exports = config;
