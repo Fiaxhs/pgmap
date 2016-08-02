@@ -1,4 +1,6 @@
-var map;
+var map,
+    pokemonsSeen = {},
+    scannerMarker;
 
 function initMap() {
     var initPosition = [48.869147, 2.3251892],
@@ -17,6 +19,10 @@ function initMap() {
         maxZoom: 18
     }).addTo(map);
 
+    scannerMarker = L.marker(initPosition, {
+        title: 'Scanner',
+    }).addTo(map);
+
     map.on('dragend', savePostion);
     map.on('zoomend', savePostion);
     map.on('click', function (e) {
@@ -30,32 +36,55 @@ function initMap() {
     });
 
     getPokemons();
-    window.setInterval(getPokemons, 1000);
+    // window.setInterval(getPokemons, 1000);
 }
 
+// Hash manipulation
 function savePostion() {
     var center = map.getCenter();
     window.location = '#' + center.lat + '/' + center.lng + '/' + map.getZoom();
 }
 
+// Fetch pokemons
 function getPokemons() {
     fetch('/pokemons')
         .then(function (response){
             response.json()
             .then(function (pokemons){
-                pokemons.forEach(function (pokemon) {
-                    var time = new Date(pokemon.expiration*1000);
-                    var icon = L.icon({
-                        iconUrl: ('images/icons/' + pokemon.pokemonid + '.png'),
-                        iconSize: [48, 48]
-                    });
-
-                    L.marker([pokemon.latitude, pokemon.longitude], {
-                        icon: icon,
-                        title: pokemonList[pokemon.pokemonid].name + ' (' + time.getHours() + ':' + ('00' + time.getMinutes()).slice(-2) + ')',
-                    }).addTo(map);
-                });
+                pokemons.forEach(addPokemon);
             });
         });
 }
+
+// Add pokemon marker to map
+function addPokemon(pokemon) {
+    if (pokemonsSeen[pokemon.id]) {
+        return;
+    }
+    pokemonsSeen[pokemon.id] = true;
+    var time = new Date(+pokemon.expiration);
+    var icon = L.icon({
+        iconUrl: ('images/icons/' + pokemon.pokemonid + '.png'),
+        iconSize: [48, 48]
+    });
+
+    var marker = L.marker([pokemon.latitude, pokemon.longitude], {
+        icon: icon,
+        title: pokemonList[pokemon.pokemonid].name + ' (' + time.getHours() + ':' + ('00' + time.getMinutes()).slice(-2) + ')',
+    }).addTo(map);
+    window.setTimeout(function() {
+        delete pokemonsSeen[pokemon.id];
+        map.removeLayer(marker);
+    }, pokemon.expiration - Date.now());
+}
 initMap();
+
+// Scanner position
+var socket = io();
+socket.on('newPokemon', function (pokemon){
+    addPokemon(pokemon);
+});
+
+socket.on('newLocation', function (location){
+    scannerMarker.setLatLng([location.coords.latitude, location.coords.longitude]);
+});
