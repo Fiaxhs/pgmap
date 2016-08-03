@@ -1,3 +1,20 @@
+
+function h(tag, attrs, content) {
+    var result = document.createElement(tag);
+
+    if (attrs) for (attr in attrs) result.setAttribute(attr, attrs[attr]);
+
+    function populate(c) {
+        if (!c) return;
+
+        if (Array.isArray(c)) c.forEach(populate);
+        else if (typeof c === 'string') result.appendChild(document.createTextNode(c));
+        else result.appendChild(c);
+    }
+    populate(content);
+    return result;
+}
+
 var map,
     markers = {},
     scannerMarker;
@@ -49,6 +66,43 @@ function getIcon(pokemonid) {
     });
 }
 
+function pad(s, chars) {
+    return (chars + s).slice(-chars.length);
+}
+
+function formatTime(ms) {
+    var totalSeconds = Math.round(ms / 1000);
+    var minutes = Math.floor(totalSeconds / 60);
+    var seconds = totalSeconds % 60;
+
+    return `${minutes}:${pad(seconds, '00')}`;
+}
+
+function createCounter(expiration, updatefn) {
+    function update() {
+        var remaining = expiration - Date.now();
+        if (remaining < 0) remaining = 0;
+        updatefn(remaining);
+        if (!remaining) clearInterval(interval);
+    }
+
+    var interval = window.setInterval(update, 1000);
+    update();
+}
+
+function createPopup(pokemon) {
+    var counter = h('span');
+
+    createCounter(pokemon.expiration, function (remaining) {
+        counter.textContent = formatTime(remaining);
+    });
+
+    return h('div', { class: 'popup' }, [
+        h('span', { class: 'name' }, pokemonList[pokemon.pokemonid].name),
+        counter,
+    ]);
+}
+
 // Add pokemon marker to map
 function addPokemon(pokemon) {
     var oldMarker = markers[pokemon.id];
@@ -69,6 +123,9 @@ function addPokemon(pokemon) {
             title: pokemonList[pokemon.pokemonid].name + ' (' + formattedTime + ')',
             opacity: pokemon.isLure ? 0.5 : 1
         }).addTo(map);
+
+        marker.bindPopup(createPopup(pokemon));
+
         window.setTimeout(function() {
             delete markers[pokemon.id];
             map.removeLayer(marker);
