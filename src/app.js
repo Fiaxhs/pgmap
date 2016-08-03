@@ -1,7 +1,7 @@
 'use strict';
 
 const long = require('long'),
-    config = require('./config'),
+    config = require('../config'),
     R = 6378.137, // Radius of earth in KM
 
     express = require('express'),
