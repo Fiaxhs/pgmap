@@ -23,8 +23,8 @@ function initMap() {
         title: 'Scanner',
     }).addTo(map);
 
-    map.on('dragend', savePostion);
-    map.on('zoomend', savePostion);
+    map.on('dragend', savePosition);
+    map.on('zoomend', savePosition);
     map.on('click', function (e) {
         fetch('/scan/' + e.latlng.lat + '/' + e.latlng.lng)
         .then(function (response) {
@@ -37,7 +37,7 @@ function initMap() {
 }
 
 // Hash manipulation
-function savePostion() {
+function savePosition() {
     var center = map.getCenter();
     window.location = '#' + center.lat + '/' + center.lng + '/' + map.getZoom();
 }
