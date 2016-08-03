@@ -20,10 +20,6 @@ io.on('connection', function(socket){
   console.log('New websocket connection');
 });
 
-function changeLocation(location) {
-    account.SetLocation(location, parsePokemons);
-    io.emit('newLocation', location);
-}
 
 // User account
 const username = config.login.username,
@@ -54,10 +50,11 @@ app.get('/scan/:lat/:lng', function (req, res) {
 account.init(username, password, location, provider, function(err) {
     if (err){
         console.log(err);
+        return;
     }
     setInterval(function () {
         moveNext();
-    }, config.moveInterval);
+    }, config.moveInterval + 500);
 });
 
 // Find next move, either a ping from the user or around current ping.
@@ -77,6 +74,7 @@ function moveNext() {
     gridPos = (gridPos + 1) % 9;
     return;
 }
+
 // Move around last ping location to cover a big enough area
 function moveAround(loc, offsetX, offsetY) {
     var new_latitude  = loc.coords.latitude  + (offsetY/1000 / R) * (180 / Math.PI);
@@ -84,11 +82,25 @@ function moveAround(loc, offsetX, offsetY) {
     return {type: 'coords', coords: {longitude: new_longitude, latitude: new_latitude, altitude:0}};
 }
 
-// Get wild pokemons and save to db
+// Change location, notify client
+function changeLocation(location) {
+    // Wait before scanning
+    account.SetLocation(location, function () { 
+        setTimeout(parsePokemons, config.moveInterval);
+    });
+    io.emit('newLocation', location);
+}
+
+// Get wild pokemons and lure pokemons around
 function parsePokemons() {
     account.Heartbeat(function(err, hb) {
         if (err){
             console.log(err);
+            return;
+        }
+        if (!hb || !hb.cells || !hb.cells.length) {
+            console.log("Uh oh, something's weird.");
+            return;
         }
         hb.cells.forEach(function (cell) {
             cell.Fort.forEach(function (fort){
@@ -107,7 +119,6 @@ function parsePokemons() {
             cell.WildPokemon.forEach(function (pokemon) {
                 var ttl = Math.floor(pokemon.TimeTillHiddenMs/1000);
                 if (ttl > 0) {
-                    var query = 'INSERT INTO pokemons (longitude, latitude, expiration, pokemonid, id) VALUES (?, ?, ?, ?, ?) USING ttl ?';
                     var encounterId = new long(pokemon.EncounterId.low, pokemon.EncounterId.high, pokemon.EncounterId.unsigned);
                         
                     var expiration = Date.now() + pokemon.TimeTillHiddenMs;

@@ -2,9 +2,29 @@ var map,
     markers = {},
     scannerMarker;
 
+var locateControl = L.Control.extend({
+    options: {position: 'topright'},
+
+    onAdd: function (map) {
+        var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+
+        container.style.backgroundColor = 'white';
+        container.style.width = '30px';
+        container.style.height = '30px';
+
+        container.onclick = function(event){
+            event.stopPropagation();
+            map.locate({setView: true, maxZoom: 16});
+        }
+        return container;
+    }
+ 
+});
+
 function initMap() {
-    var initPosition = [48.869147, 2.3251892],
+    var initPosition = [48.858574056544384, 2.2939968109130864],
         initZoom = 16;
+
     if (window.location.hash) {
         res = window.location.hash.match(/(\d+\.\d+)\/(\d+\.\d+)\/(\d+)/);
         if (res) {
@@ -13,18 +33,26 @@ function initMap() {
         }
 
     }
-    map = L.map('map').setView(initPosition, initZoom);
-    L.tileLayer(leafletURL, {
-        attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://mapbox.com">Mapbox</a>',
-        maxZoom: 18
-    }).addTo(map);
 
+    // Add retina tiles if retina screen
+    if (L.Browser.retina) {
+        leafletURL = leafletURL.replace('{y}?access_token', '{y}@2x?access_token');
+    }
+    map = L.map('map').setView(initPosition, initZoom);
+    L.tileLayer(leafletURL, {maxZoom: 18}).addTo(map);
+
+
+    map.addControl(new locateControl());
     scannerMarker = L.marker(initPosition, {
         title: 'Scanner',
     }).addTo(map);
 
-    map.on('dragend', savePosition);
-    map.on('zoomend', savePosition);
+    attachMapEvents();
+}
+
+function attachMapEvents () {
+    map.on('dragend', savePostion);
+    map.on('zoomend', savePostion);
     map.on('click', function (e) {
         fetch('/scan/' + e.latlng.lat + '/' + e.latlng.lng)
         .then(function (response) {

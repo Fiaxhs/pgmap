@@ -5,13 +5,13 @@ var config = {
         provider: ''  // Either 'google' or 'ptc'
     },
     initialposition: {
-        latitude: 48.869147,
-        longitude: 2.3251892
+        latitude: 48.858574056544384, 
+        longitude: 2.2939968109130864
     },
     app: {
         port: 3000
     },
-    moveInterval: 4000
+    moveInterval: 10000 // This should match the official application delay between heartbeats
 };
 
 module.exports = config;
