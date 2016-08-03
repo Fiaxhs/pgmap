@@ -5,8 +5,8 @@
   "description": "Pokevision for one.",
   "main": "app.js",
   "dependencies": {
-    "cassandra-driver": "^3.1.1",
     "express": "^4.14.0",
+    "ioredis": "^2.2.0",
     "long": "^3.2.0",
     "pokemon-go-node-api": "Armax/Pokemon-GO-node-api",
     "socket.io": "^1.4.8"

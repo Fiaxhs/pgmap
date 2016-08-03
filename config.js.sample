@@ -10,7 +10,8 @@ var config = {
     },
     app: {
         port: 3000
-    }
+    },
+    moveInterval: 4000
 };
 
 module.exports = config;

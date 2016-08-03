@@ -3,7 +3,7 @@
 const long = require('long'),
     config = require('./config'),
     R = 6378.137, // Radius of earth in KM
-    
+
     express = require('express'),
     app = express(),
     server = app.listen(config.app.port, function () {
@@ -11,16 +11,16 @@ const long = require('long'),
     }),
     io = require('socket.io').listen(server),
 
-    cassandra = require('cassandra-driver'),
-    client = new cassandra.Client({ contactPoints: ['localhost'], keyspace: 'pokego'}),
-    
+    Redis = require('ioredis'),
+    redis = new Redis(),
+
     pokemongo = require('pokemon-go-node-api'),
     account = new pokemongo.Pokeio();
 
 
 // Socket for scanner position
 io.on('connection', function(socket){
-  console.log('a user connected');
+  console.log('New websocket connection');
 });
 
 function changeLocation(location) {
@@ -44,9 +44,11 @@ app.set('view engine', 'pug');
 app.use(express.static('public'));
 
 app.get('/pokemons', function (req, res) {
-    client.execute('SELECT * FROM pokemons', function (err, result){
-        res.send(result.rows);
-    });
+    // client.execute('SELECT * FROM pokemons', function (err, result){
+    //     res.send(result.rows);
+    // });
+    // redis.georadius("pokemons", )
+    res.send("");
 });
 
 app.get('/', function (req, res) {
@@ -59,8 +61,6 @@ app.get('/scan/:lat/:lng', function (req, res) {
 });
 
 
-
-
 // Scraping api
 account.init(username, password, location, provider, function(err) {
     if (err){
@@ -68,21 +68,21 @@ account.init(username, password, location, provider, function(err) {
     }
     setInterval(function () {
         moveNext();
-    }, 2000);
+    }, config.moveInterval);
 });
 
 // Find next move, either a ping from the user or around current ping.
 function moveNext() {
     if (queueLocation.length) {
         location = queueLocation.shift();
-        console.log('Moving to ' + location.toString());
+        console.log('Moving to ', location);
         changeLocation(location);
         gridPos = 0;
         return;
     }
     var step = 100;
-    var offX = -step + (Math.floor(gridPos/3) * step); 
-    var offY = -step + (gridPos % 3 * step); 
+    var offX = -step + (Math.floor(gridPos/3) * step);
+    var offY = -step + (gridPos % 3 * step);
     var newLocation = moveAround(location, offX, offY);
     changeLocation(newLocation);
     gridPos = (gridPos + 1) % 9;
@@ -107,17 +107,23 @@ function parsePokemons() {
                     if (ttl > 0) {
                         var query = 'INSERT INTO pokemons (longitude, latitude, expiration, pokemonid, id) VALUES (?, ?, ?, ?, ?) USING ttl ?';
                         var encounterId = new long(pokemon.EncounterId.low, pokemon.EncounterId.high, pokemon.EncounterId.unsigned);
-                            
+
                         var expiration = Date.now() + pokemon.TimeTillHiddenMs;
                         var params = [pokemon.Longitude, pokemon.Latitude, expiration, pokemon.pokemon.PokemonId, encounterId.toString(), ttl];
+
                         io.emit('newPokemon', { longitude:pokemon.Longitude, latitude:pokemon.Latitude, expiration:expiration, pokemonid: pokemon.pokemon.PokemonId, id:encounterId.toString()});
-                        client.execute(query, params, { prepare: true }, function(err) {
-                            if (err) {
-                                console.log(err);
-                            } else {
-                                console.log('Row inserted on the cluster');
-                            }
-                        });
+
+                        var member = [pokemon.pokemon.PokemonId, encounterId.toString(), expiration].join('#');
+                        redis.geoadd("pokemons", pokemon.Latitude, pokemon.Longitude, member).then(function(result) {
+                            // console.log(result);
+                        })
+                        // client.execute(query, params, { prepare: true }, function(err) {
+                        //     if (err) {
+                        //         console.log(err);
+                        //     } else {
+                        //         console.log('Row inserted on the cluster');
+                        //     }
+                        // });
                     }
                 });
         }
