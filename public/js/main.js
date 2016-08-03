@@ -70,7 +70,6 @@ function addPokemon(pokemon) {
             opacity: pokemon.isLure ? 0.5 : 1
         }).addTo(map);
         window.setTimeout(function() {
-            debugger;
             delete markers[pokemon.id];
             map.removeLayer(marker);
         }, +pokemon.expiration - Date.now());
