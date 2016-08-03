@@ -1,3 +1,4 @@
+/*exported leafletURL*/
 // Create an account on https://www.mapbox.com
 // Then go to https://www.mapbox.com/studio/styles/
 // Pick a style 

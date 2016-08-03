@@ -1,8 +1,9 @@
+/*global pokemonList, leafletURL, L, io*/
 
 function h(tag, attrs, content) {
     var result = document.createElement(tag);
 
-    if (attrs) for (attr in attrs) result.setAttribute(attr, attrs[attr]);
+    if (attrs) for (var attr in attrs) result.setAttribute(attr, attrs[attr]);
 
     function populate(c) {
         if (!c) return;
@@ -29,10 +30,10 @@ var locateControl = L.Control.extend({
         container.onclick = function(event){
             event.stopPropagation();
             map.locate({setView: true, maxZoom: 16});
-        }
+        };
         return container;
     }
- 
+
 });
 
 function initMap() {
@@ -40,7 +41,7 @@ function initMap() {
         initZoom = 16;
 
     if (window.location.hash) {
-        res = window.location.hash.match(/(\d+\.\d+)\/(\d+\.\d+)\/(\d+)/);
+        var res = window.location.hash.match(/(\d+\.\d+)\/(\d+\.\d+)\/(\d+)/);
         if (res) {
             initPosition = [res[1], res[2]];
             initZoom = res[3];
@@ -49,11 +50,14 @@ function initMap() {
     }
 
     // Add retina tiles if retina screen
+    var retinaAwareURL;
     if (L.Browser.retina) {
-        leafletURL = leafletURL.replace('{y}?access_token', '{y}@2x?access_token');
+        retinaAwareURL = leafletURL.replace('{y}?access_token', '{y}@2x?access_token');
+    } else {
+        retinaAwareURL = leafletURL;
     }
     map = L.map('map').setView(initPosition, initZoom);
-    L.tileLayer(leafletURL, {maxZoom: 18}).addTo(map);
+    L.tileLayer(retinaAwareURL, {maxZoom: 18}).addTo(map);
 
 
     map.addControl(new locateControl());
@@ -72,8 +76,8 @@ function attachMapEvents () {
         .then(function (response) {
             response.json()
             .then(function (json) {
-                console.log(json);
-            })
+                console.log(json); // eslint-disable-line no-console
+            });
         });
     });
 }

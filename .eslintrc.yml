@@ -1,0 +1,15 @@
+extends: eslint:recommended
+
+rules:
+    indent: [error, 4]
+    linebreak-style: [error, unix]
+    quotes: [error, single, {avoidEscape: true}]
+    semi: [error, always]
+    no-unused-expressions: error
+    no-trailing-spaces: error
+    comma-dangle: off
+    no-console: off
+
+env:
+    es6: true
+    node: true
