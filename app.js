@@ -46,7 +46,7 @@ app.get('/', function (req, res) {
 
 app.get('/scan/:lat/:lng', function (req, res) {
     queueLocation.push({type: 'coords', coords:{latitude: +req.params.lat , longitude: +req.params.lng, altitude:0}});
-    res.send({postion: queueLocation.length});
+    res.send({position: queueLocation.length});
 });
 
 
