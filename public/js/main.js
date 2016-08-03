@@ -1,5 +1,5 @@
 var map,
-    pokemonsSeen = {},
+    markers = {},
     scannerMarker;
 
 function initMap() {
@@ -14,7 +14,7 @@ function initMap() {
 
     }
     map = L.map('map').setView(initPosition, initZoom);
-    L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/light-v9/tiles/256/{z}/{x}/{y}?access_token=' + mapboxToken, {
+    L.tileLayer(leafletURL, {
         attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://mapbox.com">Mapbox</a>',
         maxZoom: 18
     }).addTo(map);
@@ -34,9 +34,6 @@ function initMap() {
             })
         });
     });
-
-    getPokemons();
-    // window.setInterval(getPokemons, 1000);
 }
 
 // Hash manipulation
@@ -45,37 +42,41 @@ function savePostion() {
     window.location = '#' + center.lat + '/' + center.lng + '/' + map.getZoom();
 }
 
-// Fetch pokemons
-function getPokemons() {
-    fetch('/pokemons')
-        .then(function (response){
-            response.json()
-            .then(function (pokemons){
-                pokemons.forEach(addPokemon);
-            });
-        });
+function getIcon(pokemonid) {
+    return L.icon({
+        iconUrl: ('images/icons/' + pokemonid + '.png'),
+        iconSize: [48, 48]
+    });
 }
 
 // Add pokemon marker to map
 function addPokemon(pokemon) {
-    if (pokemonsSeen[pokemon.id]) {
-        return;
-    }
-    pokemonsSeen[pokemon.id] = true;
-    var time = new Date(+pokemon.expiration);
-    var icon = L.icon({
-        iconUrl: ('images/icons/' + pokemon.pokemonid + '.png'),
-        iconSize: [48, 48]
-    });
+    var oldMarker = markers[pokemon.id];
+    if (oldMarker) {
+        if (oldMarker.pokemonid == pokemon.pokemonid && oldMarker.expiration == pokemon.expiration) {
+            return;
+        } else { //update lure
+            oldMarker.marker.setIcon(getIcon(pokemon.pokemonid));
+        }
+    } else {
+        var time = new Date(+pokemon.expiration);
+        var icon = getIcon(pokemon.pokemonid);
 
-    var marker = L.marker([pokemon.latitude, pokemon.longitude], {
-        icon: icon,
-        title: pokemonList[pokemon.pokemonid].name + ' (' + time.getHours() + ':' + ('00' + time.getMinutes()).slice(-2) + ')',
-    }).addTo(map);
-    window.setTimeout(function() {
-        delete pokemonsSeen[pokemon.id];
-        map.removeLayer(marker);
-    }, pokemon.expiration - Date.now());
+        var formattedTime = time.getHours() + ':' + ('00' + time.getMinutes()).slice(-2)+ ':' + ('00' + time.getSeconds()).slice(-2);
+
+        var marker = L.marker([pokemon.latitude, pokemon.longitude], {
+            icon: icon,
+            title: pokemonList[pokemon.pokemonid].name + ' (' + formattedTime + ')',
+            opacity: pokemon.isLure ? 0.5 : 1
+        }).addTo(map);
+        window.setTimeout(function() {
+            debugger;
+            delete markers[pokemon.id];
+            map.removeLayer(marker);
+        }, +pokemon.expiration - Date.now());
+
+        markers[pokemon.id] = {marker: marker, pokemonid: pokemon.pokemonid, expiration: pokemon.expiration};
+    }
 }
 initMap();
 

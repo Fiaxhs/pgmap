@@ -7,12 +7,9 @@ const long = require('long'),
     express = require('express'),
     app = express(),
     server = app.listen(config.app.port, function () {
-      console.log('Example app listening on port 3000!');
+      console.log('Server started');
     }),
     io = require('socket.io').listen(server),
-
-    Redis = require('ioredis'),
-    redis = new Redis(),
 
     pokemongo = require('pokemon-go-node-api'),
     account = new pokemongo.Pokeio();
@@ -42,14 +39,6 @@ var queueLocation = [];
 // App setup
 app.set('view engine', 'pug');
 app.use(express.static('public'));
-
-app.get('/pokemons', function (req, res) {
-    // client.execute('SELECT * FROM pokemons', function (err, result){
-    //     res.send(result.rows);
-    // });
-    // redis.georadius("pokemons", )
-    res.send("");
-});
 
 app.get('/', function (req, res) {
     res.sendFile(__dirname + '/views/index.html');
@@ -101,33 +90,30 @@ function parsePokemons() {
         if (err){
             console.log(err);
         }
-        for (var i = hb.cells.length - 1; i >= 0; i--) {
-                hb.cells[i].WildPokemon.forEach(function (pokemon) {
-                    var ttl = Math.floor(pokemon.TimeTillHiddenMs/1000);
-                    if (ttl > 0) {
-                        var query = 'INSERT INTO pokemons (longitude, latitude, expiration, pokemonid, id) VALUES (?, ?, ?, ?, ?) USING ttl ?';
-                        var encounterId = new long(pokemon.EncounterId.low, pokemon.EncounterId.high, pokemon.EncounterId.unsigned);
-
-                        var expiration = Date.now() + pokemon.TimeTillHiddenMs;
-                        var params = [pokemon.Longitude, pokemon.Latitude, expiration, pokemon.pokemon.PokemonId, encounterId.toString(), ttl];
-
-                        io.emit('newPokemon', { longitude:pokemon.Longitude, latitude:pokemon.Latitude, expiration:expiration, pokemonid: pokemon.pokemon.PokemonId, id:encounterId.toString()});
-
-                        var member = [pokemon.pokemon.PokemonId, encounterId.toString(), expiration].join('#');
-                        redis.geoadd("pokemons", pokemon.Latitude, pokemon.Longitude, member).then(function(result) {
-                            // console.log(result);
-                        })
-                        // client.execute(query, params, { prepare: true }, function(err) {
-                        //     if (err) {
-                        //         console.log(err);
-                        //     } else {
-                        //         console.log('Row inserted on the cluster');
-                        //     }
-                        // });
-                    }
-                });
-        }
-
+        hb.cells.forEach(function (cell) {
+            cell.Fort.forEach(function (fort){
+                if (fort.LureInfo) {
+                    var expiration = new long(fort.LureInfo.LureExpiresTimestampMs.low, fort.LureInfo.LureExpiresTimestampMs.high, fort.LureInfo.LureExpiresTimestampMs.unsigned).toString();
+                    io.emit('newPokemon', { 
+                        longitude:fort.Longitude, 
+                        latitude:fort.Latitude, 
+                        expiration: expiration, 
+                        pokemonid: fort.LureInfo.ActivePokemonId, 
+                        id:fort.FortId.toString(),
+                        isLure: true
+                    });
+                }
+            });
+            cell.WildPokemon.forEach(function (pokemon) {
+                var ttl = Math.floor(pokemon.TimeTillHiddenMs/1000);
+                if (ttl > 0) {
+                    var query = 'INSERT INTO pokemons (longitude, latitude, expiration, pokemonid, id) VALUES (?, ?, ?, ?, ?) USING ttl ?';
+                    var encounterId = new long(pokemon.EncounterId.low, pokemon.EncounterId.high, pokemon.EncounterId.unsigned);
+                        
+                    var expiration = Date.now() + pokemon.TimeTillHiddenMs;
+                    io.emit('newPokemon', { longitude:pokemon.Longitude, latitude:pokemon.Latitude, expiration:expiration, pokemonid: pokemon.pokemon.PokemonId, id:encounterId.toString()});
+                }
+            });
+        });
     });
 }
-
