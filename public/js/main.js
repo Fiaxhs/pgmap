@@ -1,20 +1,42 @@
 var Map,
     markers = {},
     scannerMarker,
+    InitPosition = [48.869147, 2.3251892];
     InitZoom = 16;
 
+function geolocateUser () {
+    navigator.geolocation.getCurrentPosition(
+        onSuccessfulGeolocation,
+        onFailedGeolocation
+    );
+}
+
+function onSuccessfulGeolocation(position) {
+    centerOnPoint({
+        lat : position.coords.latitude,
+        lng : position.coords.longitude
+    })
+}
+
+function onFailedGeolocation(err) {
+    console.error("Failed geolocation", err)
+}
+
 function initMap() {
-    var initPosition = [48.869147, 2.3251892];
+    var res,
+        url = new URL(window.location),
+        doRecenter = false;
 
-    if (window.location.hash) {
-        res = window.location.hash.match(/(\d+\.\d+)\/(\d+\.\d+)\/(\d+)/);
+    if (url.hash) {
+        var res = window.location.hash.match(/(\d+\.\d+)\/(\d+\.\d+)\/(\d+)/);
         if (res) {
-            initPosition = [res[1], res[2]];
+            InitPosition = [res[1], res[2]];
             InitZoom = res[3];
+            doRecenter = true;
         }
-
     }
-    Map = L.map('map').setView(initPosition, InitZoom);
+
+    Map = L.map('map').setView(InitPosition, InitZoom);
     addGeocoder();
 
     L.tileLayer(leafletURL, {
@@ -22,7 +44,7 @@ function initMap() {
         maxZoom: 18
     }).addTo(Map);
 
-    scannerMarker = L.marker(initPosition, {
+    scannerMarker = L.marker(InitPosition, {
         title: 'Scanner',
     }).addTo(Map);
 
@@ -31,6 +53,14 @@ function initMap() {
     Map.on('click', function (e) {
         doScan(e.latlng.lat, e.latlng.lng)
     });
+
+    var isHttps = /https/.test(url.protocol),
+        isLocalhost = url.hostname === 'localhost',
+        hasGeolocation = !!navigator.geolocation;
+
+    if ((isHttps || isLocalhost) && hasGeolocation) {
+        geolocateUser();
+    }
 }
 
 function addGeocoder () {
@@ -41,17 +71,21 @@ function addGeocoder () {
 
         doScan(center.lat, center.lng)
         .then(function () {
-            newLocation({
-                coords : {
-                    latitude : center.lat,
-                    longitude : center.lng
-                }
-            })
-            savePosition(center)
-            Map.setView([center.lat, center.lng], InitZoom);
+            centerOnPoint(center)
         })
     })
     .addTo(Map);
+}
+
+function centerOnPoint(center) {
+    newLocation({
+        coords : {
+            latitude : center.lat,
+            longitude : center.lng
+        }
+    })
+    savePosition(center)
+    Map.setView([center.lat, center.lng], InitZoom);
 }
 
 function doScan(lat, lng) {
