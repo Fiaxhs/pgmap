@@ -51,8 +51,8 @@ function initMap() {
 }
 
 function attachMapEvents () {
-    map.on('dragend', savePostion);
-    map.on('zoomend', savePostion);
+    map.on('dragend', savePosition);
+    map.on('zoomend', savePosition);
     map.on('click', function (e) {
         fetch('/scan/' + e.latlng.lat + '/' + e.latlng.lng)
         .then(function (response) {
