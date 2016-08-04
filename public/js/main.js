@@ -23,11 +23,8 @@ var locateControl = L.Control.extend({
     options: {position: 'topright'},
 
     onAdd: function (map) {
-        var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
-
-        container.style.backgroundColor = 'white';
-        container.style.width = '30px';
-        container.style.height = '30px';
+        var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-locate');
+        container.innerHTML = '✛';
 
         container.onclick = function(event){
             event.stopPropagation();
@@ -88,8 +85,9 @@ function savePosition() {
 }
 
 function getIcon(pokemonid) {
+    var size = L.Browser.retina ? 'retina' : 'narmol';
     return L.icon({
-        iconUrl: ('images/icons/' + pokemonid + '.png'),
+        iconUrl: `images/pokemons/${size}/${pokemonid}.png`,
         iconSize: [48, 48]
     });
 }
