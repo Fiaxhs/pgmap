@@ -6,12 +6,18 @@
   "main": "app.js",
   "dependencies": {
     "express": "^4.14.0",
+    "iterator-tools": "^1.0.0-dev.0",
     "long": "^3.2.0",
     "pokemon-go-node-api": "Armax/Pokemon-GO-node-api",
     "socket.io": "^1.4.8"
   },
   "scripts": {
     "lint": "eslint .",
-    "start": "node src/app.js"
+    "start": "node src/app.js",
+    "test": "ava"
+  },
+  "devDependencies": {
+    "ava": "^0.15.2",
+    "eslint": "^3.2.2"
   }
 }

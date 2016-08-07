@@ -1,23 +1,39 @@
 'use strict';
 
 const long = require('long'),
-    config = require('../config'),
-    R = 6378.137, // Radius of earth in KM
-
     express = require('express'),
+    pokemongo = require('pokemon-go-node-api'),
+    socketio = require('socket.io'),
+    it = require('iterator-tools'),
+
+    coordinates = require('./coordinates'),
+    Grid = require('./grid'),
+
+    config = require('../config'),
+
     app = express(),
     server = app.listen(config.app.port, function () {
         console.log('Server started');
     }),
-    io = require('socket.io').listen(server),
 
-    pokemongo = require('pokemon-go-node-api'),
+    io = socketio.listen(server),
+
     account = new pokemongo.Pokeio();
 
+const step = 100; // consider each heartbeat returns pokemons in a 100 meters square.
+const grid = new Grid(step);
+
+function emitPokemon(socket, pokemon) {
+    if (!pokemon.pokemonid) throw new Error('Tried to send an invalid pokemon');
+    socket.emit('newPokemon', pokemon);
+}
 
 // Socket for scanner position
-io.on('connection', function () {
+io.on('connection', function (socket) {
     console.log('New websocket connection');
+    for (const pokemon of it.chainFromIterable(grid.values())) {
+        emitPokemon(socket, pokemon);
+    }
 });
 
 
@@ -61,20 +77,15 @@ function moveNext() {
         gridPos = 0;
         return;
     }
-    var step = 100;
     var offX = -step + (Math.floor(gridPos/3) * step);
     var offY = -step + (gridPos % 3 * step);
-    var newLocation = moveAround(location, offX, offY);
+    var newLocation = {
+        type: 'coords',
+        coords: coordinates.shift(location.coords, offX, offY),
+    };
     changeLocation(newLocation);
     gridPos = (gridPos + 1) % 9;
     return;
-}
-
-// Move around last ping location to cover a big enough area
-function moveAround(loc, offsetX, offsetY) {
-    var new_latitude  = loc.coords.latitude  + (offsetY/1000 / R) * (180 / Math.PI);
-    var new_longitude = loc.coords.longitude + (offsetX/1000 / R) * (180 / Math.PI) / Math.cos(loc.coords.latitude * Math.PI/180);
-    return {type: 'coords', coords: {longitude: new_longitude, latitude: new_latitude, altitude:0}};
 }
 
 // Change location, notify client
@@ -84,6 +95,10 @@ function changeLocation(location) {
         setTimeout(parsePokemons, config.moveInterval);
     });
     io.emit('newLocation', location);
+}
+
+function longToString(int) {
+    return new long(int.low, int.high, int.unsigned).toString();
 }
 
 // Get wild pokemons and lure pokemons around
@@ -97,29 +112,43 @@ function parsePokemons() {
             console.log("Uh oh, something's weird.");
             return;
         }
-        hb.cells.forEach(function (cell) {
-            cell.Fort.forEach(function (fort){
-                if (fort.LureInfo) {
-                    var expiration = new long(fort.LureInfo.LureExpiresTimestampMs.low, fort.LureInfo.LureExpiresTimestampMs.high, fort.LureInfo.LureExpiresTimestampMs.unsigned).toString();
-                    io.emit('newPokemon', {
-                        longitude:fort.Longitude,
-                        latitude:fort.Latitude,
-                        expiration: expiration,
-                        pokemonid: fort.LureInfo.ActivePokemonId,
-                        id:fort.FortId.toString(),
-                        isLure: true
-                    });
-                }
-            });
-            cell.WildPokemon.forEach(function (pokemon) {
-                var ttl = Math.floor(pokemon.TimeTillHiddenMs/1000);
-                if (ttl > 0) {
-                    var encounterId = new long(pokemon.EncounterId.low, pokemon.EncounterId.high, pokemon.EncounterId.unsigned);
 
-                    var expiration = Date.now() + pokemon.TimeTillHiddenMs;
-                    io.emit('newPokemon', { longitude:pokemon.Longitude, latitude:pokemon.Latitude, expiration:expiration, pokemonid: pokemon.pokemon.PokemonId, id:encounterId.toString()});
-                }
-            });
-        });
+        const newPokemons = it.chainFromIterable(it.map(
+            hb.cells,
+            (cell) => {
+                return it.chain(
+                    it.map(
+                        it.filter(cell.Fort, (fort) => fort.LureInfo),
+                        (fort) => {
+                            return {
+                                longitude: fort.Longitude,
+                                latitude: fort.Latitude,
+                                expiration: longToString(fort.LureInfo.LureExpiresTimestampMs),
+                                pokemonid: fort.LureInfo.ActivePokemonId,
+                                id: fort.FortId.toString(),
+                                isLure: true
+                            };
+                        }
+                    ),
+                    it.map(
+                        it.filter(cell.WildPokemon, (p) => Math.floor(p.TimeTillHiddenMs / 1000) > 0),
+                        (pokemon) => {
+                            return {
+                                longitude: pokemon.Longitude,
+                                latitude: pokemon.Latitude,
+                                expiration: Date.now() + pokemon.TimeTillHiddenMs,
+                                pokemonid: pokemon.pokemon.PokemonId,
+                                id: longToString(pokemon.EncounterId)
+                            };
+                        }
+                    )
+                );
+            }
+        ));
+
+        for (const pokemon of newPokemons) {
+            grid.add(pokemon);
+            emitPokemon(io, pokemon);
+        }
     });
 }
