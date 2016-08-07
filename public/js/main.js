@@ -57,8 +57,10 @@ function initMap() {
 
 
     map.addControl(new locateControl());
-    scannerMarker = L.marker(initPosition, {
-        title: 'Scanner',
+    scannerMarker = L.circle(initPosition, 50, {
+        clickable: false,
+        fillOpacity: 0.2,
+        opacity:0.2,
     }).addTo(map);
 
     attachMapEvents();
@@ -72,7 +74,11 @@ function attachMapEvents () {
         .then(function (response) {
             response.json()
             .then(function (json) {
-                console.log(json);
+                var pop = L.popup()
+                    .setLatLng([e.latlng.lat, e.latlng.lng])
+                    .setContent('<div>Scan queued.</div> Scanning in ~' + json.position * json.interval + 's')
+                    .openOn(map);
+                window.setTimeout(function () {map.closePopup(pop)}, 1300);
             })
         });
     });

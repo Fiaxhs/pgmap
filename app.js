@@ -42,7 +42,7 @@ app.get('/', function (req, res) {
 
 app.get('/scan/:lat/:lng', function (req, res) {
     queueLocation.push({type: 'coords', coords:{latitude: +req.params.lat , longitude: +req.params.lng, altitude:0}});
-    res.send({position: queueLocation.length});
+    res.send({position: queueLocation.length, interval: config.moveInterval/1000});
 });
 
 
@@ -61,7 +61,6 @@ account.init(username, password, location, provider, function(err) {
 function moveNext() {
     if (queueLocation.length) {
         location = queueLocation.shift();
-        console.log('Moving to ', location);
         changeLocation(location);
         gridPos = 0;
         return;
