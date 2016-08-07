@@ -11,6 +11,7 @@
     "socket.io": "^1.4.8"
   },
   "scripts": {
-    "start": "node app.js"
+    "lint": "eslint .",
+    "start": "node src/app.js"
   }
 }

@@ -1,13 +1,13 @@
 'use strict';
 
 const long = require('long'),
-    config = require('./config'),
+    config = require('../config'),
     R = 6378.137, // Radius of earth in KM
 
     express = require('express'),
     app = express(),
     server = app.listen(config.app.port, function () {
-      console.log('Server started');
+        console.log('Server started');
     }),
     io = require('socket.io').listen(server),
 
@@ -16,8 +16,8 @@ const long = require('long'),
 
 
 // Socket for scanner position
-io.on('connection', function(socket){
-  console.log('New websocket connection');
+io.on('connection', function () {
+    console.log('New websocket connection');
 });
 
 
@@ -35,10 +35,6 @@ var queueLocation = [];
 // App setup
 app.set('view engine', 'pug');
 app.use(express.static('public'));
-
-app.get('/', function (req, res) {
-    res.sendFile(__dirname + '/views/index.html');
-});
 
 app.get('/scan/:lat/:lng', function (req, res) {
     queueLocation.push({type: 'coords', coords:{latitude: +req.params.lat , longitude: +req.params.lng, altitude:0}});
@@ -84,7 +80,7 @@ function moveAround(loc, offsetX, offsetY) {
 // Change location, notify client
 function changeLocation(location) {
     // Wait before scanning
-    account.SetLocation(location, function () { 
+    account.SetLocation(location, function () {
         setTimeout(parsePokemons, config.moveInterval);
     });
     io.emit('newLocation', location);
@@ -105,11 +101,11 @@ function parsePokemons() {
             cell.Fort.forEach(function (fort){
                 if (fort.LureInfo) {
                     var expiration = new long(fort.LureInfo.LureExpiresTimestampMs.low, fort.LureInfo.LureExpiresTimestampMs.high, fort.LureInfo.LureExpiresTimestampMs.unsigned).toString();
-                    io.emit('newPokemon', { 
-                        longitude:fort.Longitude, 
-                        latitude:fort.Latitude, 
-                        expiration: expiration, 
-                        pokemonid: fort.LureInfo.ActivePokemonId, 
+                    io.emit('newPokemon', {
+                        longitude:fort.Longitude,
+                        latitude:fort.Latitude,
+                        expiration: expiration,
+                        pokemonid: fort.LureInfo.ActivePokemonId,
                         id:fort.FortId.toString(),
                         isLure: true
                     });
@@ -119,7 +115,7 @@ function parsePokemons() {
                 var ttl = Math.floor(pokemon.TimeTillHiddenMs/1000);
                 if (ttl > 0) {
                     var encounterId = new long(pokemon.EncounterId.low, pokemon.EncounterId.high, pokemon.EncounterId.unsigned);
-                        
+
                     var expiration = Date.now() + pokemon.TimeTillHiddenMs;
                     io.emit('newPokemon', { longitude:pokemon.Longitude, latitude:pokemon.Latitude, expiration:expiration, pokemonid: pokemon.pokemon.PokemonId, id:encounterId.toString()});
                 }
