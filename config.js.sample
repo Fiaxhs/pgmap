@@ -1,11 +1,11 @@
-var config = {
+module.exports = {
     login: {
         username: '', // Your google email or Pokemon Trainer id
         password: '', // Your password (eh.)
         provider: ''  // Either 'google' or 'ptc'
     },
     initialposition: {
-        latitude: 48.858574056544384, 
+        latitude: 48.858574056544384,
         longitude: 2.2939968109130864
     },
     app: {
@@ -13,5 +13,3 @@ var config = {
     },
     moveInterval: 10000 // This should match the official application delay between heartbeats
 };
-
-module.exports = config;
