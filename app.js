@@ -36,10 +36,6 @@ var queueLocation = [];
 app.set('view engine', 'pug');
 app.use(express.static('public'));
 
-app.get('/', function (req, res) {
-    res.sendFile(__dirname + '/views/index.html');
-});
-
 app.get('/scan/:lat/:lng', function (req, res) {
     queueLocation.push({type: 'coords', coords:{latitude: +req.params.lat , longitude: +req.params.lng, altitude:0}});
     res.send({position: queueLocation.length});
