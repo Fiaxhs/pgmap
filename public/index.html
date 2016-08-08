@@ -7,40 +7,11 @@
     <meta name=viewport content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="https://npmcdn.com/leaflet@1.0.0-rc.2/dist/leaflet.css">
     <script src="https://npmcdn.com/leaflet@1.0.0-rc.2/dist/leaflet.js"></script>
+    <script src="js/controls/Geocoder.js"></script>
     <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
     <script src="js/pokemons.js"></script>
-    <style type="text/css">
-            body,html{
-                padding:0;
-                margin:0;
-            }
-            #map{
-                width:100%;
-                height:100%;
-                position:absolute;
-            }
-            .popup {
-                text-align: center;
-            }
-            .popup .name {
-                display: block;
-                font-weight: bold;
-            }
-
-            .leaflet-control-locate{
-                width: 30px;
-                height: 30px;
-                background-color: white;
-                line-height: 30px;
-                font-size: 24px;
-                text-align: center;
-                cursor: pointer;
-            }
-            
-            .leaflet-control-locate:hover{
-                background-color: #f4f4f4;
-            }
-    </style>
+    <link rel="stylesheet" href="css/global.css" media="screen" charset="utf-8">
+    <link rel="stylesheet" href="css/controls/Geocoder.css" media="screen" charset="utf-8">
 </head>
 <body>
     <div id="map"></div>
