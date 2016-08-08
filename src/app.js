@@ -20,6 +20,11 @@ const long = require('long'),
 
     account = new pokemongo.Pokeio();
 
+if (!config.leafletURL) {
+    console.log('Empty "leafletURL" field in config.js. Did you update your config?');
+    process.exit(1);
+}
+
 const step = 100; // consider each heartbeat returns pokemons in a 100 meters square.
 const grid = new Grid(step);
 
@@ -31,6 +36,7 @@ function emitPokemon(socket, pokemon) {
 // Socket for scanner position
 io.on('connection', function (socket) {
     console.log('New websocket connection');
+    socket.emit('run', config.leafletURL);
     for (const pokemon of it.chainFromIterable(grid.values())) {
         emitPokemon(socket, pokemon);
     }

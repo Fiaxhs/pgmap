@@ -1,4 +1,4 @@
-/*global pokemonList, leafletURL, L, io*/
+/*global pokemonList, L, io*/
 
 // dom creation helper
 function h(tag, attrs, content) {
@@ -26,12 +26,6 @@ var map,
     initZoom = 16;
 
 
-function run () {
-    setupHashRoute();
-    initMap();
-    addMapControls();
-}
-
 function setupHashRoute () {
     var res,
         url = new URL(window.location);
@@ -46,7 +40,7 @@ function setupHashRoute () {
 }
 
 // Setup map
-function initMap() {
+function initMap(leafletURL) {
     // Add retina tiles if retina screen
     var retinaAwareURL;
     if (L.Browser.retina) {
@@ -220,11 +214,20 @@ function createPopup(pokemon) {
     ]);
 }
 
-// Let's go, baby
-run();
 
 // Listen to newPokemon and newLocation
 var socket = io();
+
+
+// Let's go, baby
+socket.once('run', run);
+function run (leafletURL) {
+    setupHashRoute();
+    initMap(leafletURL);
+    addMapControls();
+}
+
+
 socket.on('newPokemon', addPokemon);
 // Add pokemon marker to map
 function addPokemon(pokemon) {
@@ -257,6 +260,7 @@ function addPokemon(pokemon) {
         markers[pokemon.id] = {marker: marker, pokemonid: pokemon.pokemonid, expiration: pokemon.expiration};
     }
 }
+
 
 socket.on('newLocation', newLocation);
 
