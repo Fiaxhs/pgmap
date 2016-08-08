@@ -1,5 +1,6 @@
 /*global pokemonList, leafletURL, L, io*/
 
+// dom creation helper
 function h(tag, attrs, content) {
     var result = document.createElement(tag);
 
@@ -18,8 +19,100 @@ function h(tag, attrs, content) {
 
 var map,
     markers = {},
-    scannerMarker;
+    scannerCircle,
+    clickMarker,
+    scanButton,
+    initPosition = [48.869147, 2.3251892],
+    initZoom = 16;
 
+
+function run () {
+    setupHashRoute();
+    initMap();
+    addMapControls();
+}
+
+function setupHashRoute () {
+    var res,
+        url = new URL(window.location);
+
+    if (url.hash) {
+        res = window.location.hash.match(/(\d+\.\d+)\/(\d+\.\d+)\/(\d+)/);
+        if (res) {
+            initPosition = [res[1], res[2]];
+            initZoom = res[3];
+        }
+    }
+}
+
+// Setup map
+function initMap() {
+    // Add retina tiles if retina screen
+    var retinaAwareURL;
+    if (L.Browser.retina) {
+        retinaAwareURL = leafletURL.replace('{y}?access_token', '{y}@2x?access_token');
+    } else {
+        retinaAwareURL = leafletURL;
+    }
+    map = L.map('map').setView(initPosition, initZoom);
+    L.tileLayer(retinaAwareURL, {maxZoom: 18}).addTo(map);
+
+    // Map events
+    map.on('dragend', savePosition);
+    map.on('zoomend', savePosition);
+    map.on('click', addMarkerForScan);
+}
+
+// Update location.hash with given position
+function savePosition(center) {
+    if (!center.lat && !center.lng) {
+        center = map.getCenter();
+    }
+    window.location = '#' + center.lat + '/' + center.lng + '/' + map.getZoom();
+}
+
+// Add the marker for location to scan
+function addMarkerForScan (e) {
+    clickMarker.setLatLng(e.latlng).addTo(map);
+    map.addControl(scanButton);
+    scanButton.getContainer().style.display = 'block';
+}
+
+function addMapControls () {
+    addGeocoder();
+    map.addControl(new locateControl());
+    scanButton = new scanControl();
+    scannerCircle = L.circle(initPosition, 50, {
+        clickable: false,
+        fillOpacity: 0.2,
+        opacity:0.2,
+    }).addTo(map);
+
+    clickMarker = L.marker(initPosition);
+}
+
+// Scan control
+var scanControl = L.Control.extend({
+    options: {
+        position: 'bottomleft'
+    },
+
+    onAdd: function () {
+        var container = h('div', { class: 'leaflet-bar leaflet-control scan-control' }, [
+            h('span', { class: 'name' }, 'Scan')
+        ]);
+
+        container.onclick = function(e){
+            e.stopPropagation();
+            doScan(clickMarker.getLatLng());
+            map.removeControl(scanButton);
+            map.removeControl(clickMarker);
+        };
+        return container;
+    }
+});
+
+// Geolocation control
 var locateControl = L.Control.extend({
     options: {position: 'topright'},
 
@@ -36,64 +129,49 @@ var locateControl = L.Control.extend({
 
 });
 
-function initMap() {
-    var initPosition = [48.858574056544384, 2.2939968109130864],
-        initZoom = 16;
+// Add searchbar
+function addGeocoder () {
+    L.Control.geocoder({
+        defaultMarkGeocode: false
+    }).on('markgeocode', function(e) {
+        var center = e.geocode.center;
 
-    if (window.location.hash) {
-        var res = window.location.hash.match(/(\d+\.\d+)\/(\d+\.\d+)\/(\d+)/);
-        if (res) {
-            initPosition = [res[1], res[2]];
-            initZoom = res[3];
-        }
-
-    }
-
-    // Add retina tiles if retina screen
-    var retinaAwareURL;
-    if (L.Browser.retina) {
-        retinaAwareURL = leafletURL.replace('{y}?access_token', '{y}@2x?access_token');
-    } else {
-        retinaAwareURL = leafletURL;
-    }
-    map = L.map('map').setView(initPosition, initZoom);
-    L.tileLayer(retinaAwareURL, {maxZoom: 18}).addTo(map);
-
-
-    map.addControl(new locateControl());
-    scannerMarker = L.circle(initPosition, 50, {
-        clickable: false,
-        fillOpacity: 0.2,
-        opacity:0.2,
-    }).addTo(map);
-
-    attachMapEvents();
+        doScan(center)
+        .then(function () {
+            centerOnPoint(center);
+        });
+    })
+    .addTo(map);
 }
 
-function attachMapEvents () {
-    map.on('dragend', savePosition);
-    map.on('zoomend', savePosition);
-    map.on('click', function (e) {
-        fetch('/scan/' + e.latlng.lat + '/' + e.latlng.lng)
-        .then(function (response) {
-            response.json()
-            .then(function (json) {
-                var pop = L.popup()
-                    .setLatLng([e.latlng.lat, e.latlng.lng])
-                    .setContent('<div>Scan queued.</div> Scanning in ~' + json.position * json.interval + 's')
-                    .openOn(map);
-                window.setTimeout(function () {map.closePopup(pop)}, 1300);
-            })
+// Center map on given point
+function centerOnPoint(center) {
+    newLocation({
+        coords : {
+            latitude : center.lat,
+            longitude : center.lng
+        }
+    });
+    savePosition(center);
+    map.setView([center.lat, center.lng], initZoom);
+}
+
+// Queue location for scan
+function doScan(latlng) {
+    return fetch('/scan/' + latlng.lat + '/' + latlng.lng)
+    .then(function (response) {
+        response.json()
+        .then(function (json) {
+            var pop = L.popup()
+                .setLatLng([latlng.lat, latlng.lng])
+                .setContent('<div>Scan queued.</div> Scanning in ~' + json.position * json.interval + 's')
+                .openOn(map);
+            window.setTimeout(function () {map.closePopup(pop);}, 1300);
         });
     });
 }
 
-// Hash manipulation
-function savePosition() {
-    var center = map.getCenter();
-    window.location = '#' + center.lat + '/' + center.lng + '/' + map.getZoom();
-}
-
+// Icon creation for pokemon
 function getIcon(pokemonid) {
     var size = L.Browser.retina ? 'retina' : 'narmol';
     return L.icon({
@@ -102,6 +180,7 @@ function getIcon(pokemonid) {
     });
 }
 
+// npm install left-pad alternative.
 function pad(s, chars) {
     return (chars + s).slice(-chars.length);
 }
@@ -111,9 +190,10 @@ function formatTime(ms) {
     var minutes = Math.floor(totalSeconds / 60);
     var seconds = totalSeconds % 60;
 
-    return `${minutes}:${pad(seconds, '00')}`;
+    return ` ${minutes}:${pad(seconds, '00')}`;
 }
 
+// Counter for pokemon popup
 function createCounter(expiration, updatefn) {
     function update() {
         var remaining = expiration - Date.now();
@@ -126,6 +206,7 @@ function createCounter(expiration, updatefn) {
     update();
 }
 
+// Pokemon popup
 function createPopup(pokemon) {
     var counter = h('span');
 
@@ -139,6 +220,12 @@ function createPopup(pokemon) {
     ]);
 }
 
+// Let's go, baby
+run();
+
+// Listen to newPokemon and newLocation
+var socket = io();
+socket.on('newPokemon', addPokemon);
 // Add pokemon marker to map
 function addPokemon(pokemon) {
     var oldMarker = markers[pokemon.id];
@@ -170,14 +257,10 @@ function addPokemon(pokemon) {
         markers[pokemon.id] = {marker: marker, pokemonid: pokemon.pokemonid, expiration: pokemon.expiration};
     }
 }
-initMap();
 
-// Scanner position
-var socket = io();
-socket.on('newPokemon', function (pokemon){
-    addPokemon(pokemon);
-});
+socket.on('newLocation', newLocation);
 
-socket.on('newLocation', function (location){
-    scannerMarker.setLatLng([location.coords.latitude, location.coords.longitude]);
-});
+// Update scannerCircle position
+function newLocation (location) {
+    scannerCircle.setLatLng([location.coords.latitude, location.coords.longitude]);
+}
