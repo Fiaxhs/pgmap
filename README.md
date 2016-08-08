@@ -8,8 +8,7 @@ Pokemon GO map, Pokevision style, just for you.
 
 # Installation
 
-* copy `/config.js.sample` to `/config.js` and fill in the `login` part
-* copy `/public/js/config.js.sample` to `/public/js/config.js` and fill in the `leafletURL` part
+* copy `/config.js.sample` to `/config.js` and fill in the `login` and `leafletURL` parts
 * `npm install`
 
 
