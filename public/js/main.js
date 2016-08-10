@@ -1,5 +1,10 @@
 /*global pokemonList, L, io*/
 
+// npm install left-pad alternative.
+function pad(s, chars) {
+    return (chars + s).slice(-chars.length);
+}
+
 // dom creation helper
 function h(tag, attrs, content) {
     var result = document.createElement(tag);
@@ -17,12 +22,25 @@ function h(tag, attrs, content) {
     return result;
 }
 
+function generateUserId() {
+    return pad(Math.floor(Math.random() * Math.pow(16, 10)).toString(16), '0'.repeat(10));
+}
+
+function getUserId() {
+    var userId = localStorage.getItem('userId');
+    if (!userId) {
+        userId = generateUserId();
+        localStorage.setItem('userId', userId);
+    }
+    return userId;
+}
+
 var map,
     markers = {},
     scannerCircle,
     clickMarker,
     scanButton,
-    initPosition = [48.869147, 2.3251892],
+    currentPosition = [48.869147, 2.3251892],
     initZoom = 16;
 
 
@@ -33,7 +51,7 @@ function setupHashRoute () {
     if (url.hash) {
         res = window.location.hash.match(/(\d+\.\d+)\/(\d+\.\d+)\/(\d+)/);
         if (res) {
-            initPosition = [res[1], res[2]];
+            currentPosition = [res[1], res[2]];
             initZoom = res[3];
         }
     }
@@ -48,7 +66,7 @@ function initMap(leafletURL) {
     } else {
         retinaAwareURL = leafletURL;
     }
-    map = L.map('map').setView(initPosition, initZoom);
+    map = L.map('map').setView(currentPosition, initZoom);
     L.tileLayer(retinaAwareURL, {maxZoom: 18}).addTo(map);
 
     // Map events
@@ -76,13 +94,13 @@ function addMapControls () {
     addGeocoder();
     map.addControl(new locateControl());
     scanButton = new scanControl();
-    scannerCircle = L.circle(initPosition, 50, {
+    scannerCircle = L.circle(currentPosition, 50, {
         clickable: false,
         fillOpacity: 0.2,
         opacity:0.2,
     }).addTo(map);
 
-    clickMarker = L.marker(initPosition);
+    clickMarker = L.marker(currentPosition);
 }
 
 // Scan control
@@ -141,10 +159,8 @@ function addGeocoder () {
 // Center map on given point
 function centerOnPoint(center) {
     newLocation({
-        coords : {
-            latitude : center.lat,
-            longitude : center.lng
-        }
+        latitude : center.lat,
+        longitude : center.lng
     });
     savePosition(center);
     map.setView([center.lat, center.lng], initZoom);
@@ -152,7 +168,8 @@ function centerOnPoint(center) {
 
 // Queue location for scan
 function doScan(latlng) {
-    return fetch('/scan/' + latlng.lat + '/' + latlng.lng)
+    currentPosition = latlng;
+    return fetch(`/scan/${getUserId()}/${latlng.lat}/${latlng.lng}`)
     .then(function (response) {
         response.json()
         .then(function (json) {
@@ -172,11 +189,6 @@ function getIcon(pokemonid) {
         iconUrl: `images/pokemons/${size}/${pokemonid}.png`,
         iconSize: [48, 48]
     });
-}
-
-// npm install left-pad alternative.
-function pad(s, chars) {
-    return (chars + s).slice(-chars.length);
 }
 
 function formatTime(ms) {
@@ -221,10 +233,14 @@ var socket = io();
 
 // Let's go, baby
 socket.once('run', run);
-function run (leafletURL) {
+function run(leafletURL) {
     setupHashRoute();
     initMap(leafletURL);
     addMapControls();
+    setInterval(function () {
+        // Renew poi every 5 minutes
+        doScan(currentPosition);
+    }, 3e5 /* 5 minutes*/);
 }
 
 
@@ -266,5 +282,5 @@ socket.on('newLocation', newLocation);
 
 // Update scannerCircle position
 function newLocation (location) {
-    scannerCircle.setLatLng([location.coords.latitude, location.coords.longitude]);
+    scannerCircle.setLatLng([location.latitude, location.longitude]);
 }
