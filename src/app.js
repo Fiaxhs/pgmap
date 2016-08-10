@@ -49,18 +49,51 @@ const username = config.login.username,
     provider = config.login.provider;
 
 // Initial position
-var gridPos  = 0;
 var location = {latitude:config.initialposition.latitude , longitude:config.initialposition.longitude, altitude:0};
 
-var queueLocation = [];
+var pointsOfInterest = new Map();
+
+function getActivePointOfInterests() {
+    return it.map(
+        it.filter(
+            pointsOfInterest.entries(),
+            ([id, poi]) => {
+                // Remove points of interest older than 10 minutes
+                if (poi.date < Date.now() - 6e5 /*10 minutes*/) {
+                    pointsOfInterest.delete(id);
+                    return false;
+                }
+                return true;
+            }
+        ),
+        (entry) => entry[1]
+    );
+}
 
 // App setup
 app.set('view engine', 'pug');
 app.use(express.static('public'));
 
-app.get('/scan/:lat/:lng', function (req, res) {
-    queueLocation.push({latitude: +req.params.lat , longitude: +req.params.lng, altitude:0});
-    res.send({position: queueLocation.length, interval: config.moveInterval/1000});
+app.get('/scan/:id/:lat/:lng', function (req, res) {
+    const location = { latitude: +req.params.lat, longitude: +req.params.lng, altitude: 0 };
+
+    // Delete it so it will be inserted at the end
+    pointsOfInterest.delete(req.params.id);
+    pointsOfInterest.set(req.params.id, {
+        date: Date.now(),
+        index: 0,
+        location
+    });
+
+    const position = Array.from(
+        // Filter POIs that will be scanned in priority
+        it.filter(
+            getActivePointOfInterests(),
+            (poi) => poi.index === 0
+        )
+    ).length;
+
+    res.send({position, interval: config.moveInterval/1000});
 });
 
 
@@ -77,18 +110,39 @@ account.init(username, password, { type: 'coords', coords: location }, provider,
 
 // Find next move, either a ping from the user or around current ping.
 function moveNext() {
-    if (queueLocation.length) {
-        location = queueLocation.shift();
-        changeLocation(location);
-        gridPos = 0;
-        return;
+    let minPoi = null;
+
+    for (const poi of getActivePointOfInterests()) {
+        if (!minPoi || poi.index < minPoi.index) minPoi = poi;
     }
-    var offX = -step + (Math.floor(gridPos/3) * step);
-    var offY = -step + (gridPos % 3 * step);
-    var newLocation = coordinates.shift(location, offX, offY);
-    changeLocation(newLocation);
-    gridPos = (gridPos + 1) % 9;
-    return;
+
+    if (minPoi) {
+        let location;
+
+        // This means all poi have an index of 9, so reset everything to 0
+        if (minPoi.index === 9) {
+            for (const poi of getActivePointOfInterests()) {
+                poi.index = 0;
+            }
+        }
+
+
+        if (minPoi.index === 0) {
+            // Start with the actual location
+            location = minPoi.location;
+        } else {
+            const gridPos = (minPoi.index - 1) % 9;
+            location = coordinates.shift(
+                minPoi.location,
+                -step + (Math.floor(gridPos/3) * step),
+                -step + (gridPos % 3 * step)
+            );
+        }
+
+        minPoi.index += 1;
+
+        changeLocation(location);
+    }
 }
 
 function changeLocation(location) {
