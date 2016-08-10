@@ -141,10 +141,8 @@ function addGeocoder () {
 // Center map on given point
 function centerOnPoint(center) {
     newLocation({
-        coords : {
-            latitude : center.lat,
-            longitude : center.lng
-        }
+        latitude : center.lat,
+        longitude : center.lng
     });
     savePosition(center);
     map.setView([center.lat, center.lng], initZoom);
@@ -266,5 +264,5 @@ socket.on('newLocation', newLocation);
 
 // Update scannerCircle position
 function newLocation (location) {
-    scannerCircle.setLatLng([location.coords.latitude, location.coords.longitude]);
+    scannerCircle.setLatLng([location.latitude, location.longitude]);
 }

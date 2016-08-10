@@ -50,7 +50,7 @@ const username = config.login.username,
 
 // Initial position
 var gridPos  = 0;
-var location = {type: 'coords', coords:{latitude:config.initialposition.latitude , longitude:config.initialposition.longitude, altitude:0}};
+var location = {latitude:config.initialposition.latitude , longitude:config.initialposition.longitude, altitude:0};
 
 var queueLocation = [];
 
@@ -59,13 +59,13 @@ app.set('view engine', 'pug');
 app.use(express.static('public'));
 
 app.get('/scan/:lat/:lng', function (req, res) {
-    queueLocation.push({type: 'coords', coords:{latitude: +req.params.lat , longitude: +req.params.lng, altitude:0}});
+    queueLocation.push({latitude: +req.params.lat , longitude: +req.params.lng, altitude:0});
     res.send({position: queueLocation.length, interval: config.moveInterval/1000});
 });
 
 
 // Scraping api
-account.init(username, password, location, provider, function(err) {
+account.init(username, password, { type: 'coords', coords: location }, provider, function(err) {
     if (err){
         console.log(err);
         return;
@@ -85,10 +85,7 @@ function moveNext() {
     }
     var offX = -step + (Math.floor(gridPos/3) * step);
     var offY = -step + (gridPos % 3 * step);
-    var newLocation = {
-        type: 'coords',
-        coords: coordinates.shift(location.coords, offX, offY),
-    };
+    var newLocation = coordinates.shift(location, offX, offY);
     changeLocation(newLocation);
     gridPos = (gridPos + 1) % 9;
     return;

@@ -10,9 +10,9 @@ function longToString(int) {
     return new long(int.low, int.high, int.unsigned).toString();
 }
 
-function setLocation(account, location) {
+function setLocation(account, coords) {
     return new Promise((resolve, reject) => {
-        account.SetLocation(location, function (error, coordinates) {
+        account.SetLocation({ type: 'coords', coords }, function (error, coordinates) {
             if (error) return reject(error);
             resolve(coordinates);
         });
