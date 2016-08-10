@@ -1,13 +1,13 @@
 'use strict';
 
-const long = require('long'),
-    express = require('express'),
+const express = require('express'),
     pokemongo = require('pokemon-go-node-api'),
     socketio = require('socket.io'),
     it = require('iterator-tools'),
 
     coordinates = require('./coordinates'),
     Grid = require('./grid'),
+    crawl = require('./crawl'),
 
     config = require('../config'),
 
@@ -94,67 +94,16 @@ function moveNext() {
     return;
 }
 
-// Change location, notify client
 function changeLocation(location) {
-    // Wait before scanning
-    account.SetLocation(location, function () {
-        setTimeout(parsePokemons, config.moveInterval);
-    });
     io.emit('newLocation', location);
-}
-
-function longToString(int) {
-    return new long(int.low, int.high, int.unsigned).toString();
-}
-
-// Get wild pokemons and lure pokemons around
-function parsePokemons() {
-    account.Heartbeat(function(err, hb) {
-        if (err){
-            console.log(err);
-            return;
-        }
-        if (!hb || !hb.cells || !hb.cells.length) {
-            console.log("Uh oh, something's weird.");
-            return;
-        }
-
-        const newPokemons = it.chainFromIterable(it.map(
-            hb.cells,
-            (cell) => {
-                return it.chain(
-                    it.map(
-                        it.filter(cell.Fort, (fort) => fort.LureInfo),
-                        (fort) => {
-                            return {
-                                longitude: fort.Longitude,
-                                latitude: fort.Latitude,
-                                expiration: longToString(fort.LureInfo.LureExpiresTimestampMs),
-                                pokemonid: fort.LureInfo.ActivePokemonId,
-                                id: fort.FortId.toString(),
-                                isLure: true
-                            };
-                        }
-                    ),
-                    it.map(
-                        it.filter(cell.WildPokemon, (p) => Math.floor(p.TimeTillHiddenMs / 1000) > 0),
-                        (pokemon) => {
-                            return {
-                                longitude: pokemon.Longitude,
-                                latitude: pokemon.Latitude,
-                                expiration: Date.now() + pokemon.TimeTillHiddenMs,
-                                pokemonid: pokemon.pokemon.PokemonId,
-                                id: longToString(pokemon.EncounterId)
-                            };
-                        }
-                    )
-                );
-            }
-        ));
-
+    crawl(account, location)
+    .then((newPokemons) => {
         for (const pokemon of newPokemons) {
             grid.add(pokemon);
             emitPokemon(io, pokemon);
         }
+    })
+    .catch((error) => {
+        console.log('Error while crawling location:', error.stack || String(error));
     });
 }
