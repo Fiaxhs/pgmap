@@ -16,13 +16,18 @@ const express = require('express'),
         console.log('Server started');
     }),
 
-    io = socketio.listen(server),
-
-    account = new pokemongo.Pokeio();
+    io = socketio.listen(server);
 
 if (!config.leafletURL) {
     console.log('Empty "leafletURL" field in config.js. Did you update your config?');
     process.exit(1);
+}
+
+// User accounts
+const allAccountsConfig = config.accounts || [];
+if (config.login) {
+    console.log('Warning: the configuration "login" field is deprecated, please use the "accounts" field instead.');
+    allAccountsConfig.push(config.login);
 }
 
 const step = 100; // consider each heartbeat returns pokemons in a 100 meters square.
@@ -42,11 +47,6 @@ io.on('connection', function (socket) {
     }
 });
 
-
-// User account
-const username = config.login.username,
-    password = config.login.password,
-    provider = config.login.provider;
 
 // Initial position
 var location = {latitude:config.initialposition.latitude , longitude:config.initialposition.longitude, altitude:0};
@@ -97,19 +97,32 @@ app.get('/scan/:id/:lat/:lng', function (req, res) {
 });
 
 
-// Scraping api
-account.init(username, password, { type: 'coords', coords: location }, provider, function(err) {
-    if (err){
-        console.log(err);
-        return;
+function errorHandler(topic) {
+    return (error) => {
+        console.log(`${topic}:`, error.stack || String(error));
+    };
+}
+
+Promise.all(allAccountsConfig.map(({ username, password, provider }) => {
+    return new Promise((resolve, reject) => {
+        const account = new pokemongo.Pokeio();
+        account.init(username, password, { type: 'coords', coords: location }, provider, function (error) {
+            if (error) return reject(new Error(`Unable to login with username ${username}`, error));
+            resolve(account);
+        });
+    });
+}))
+.then((accounts) => {
+    for (const account of accounts) {
+        setInterval(function () {
+            moveNext(account);
+        }, config.moveInterval + 500);
     }
-    setInterval(function () {
-        moveNext();
-    }, config.moveInterval + 500);
-});
+}, errorHandler('Login error'))
+.catch(errorHandler('Unexpected error'));
 
 // Find next move, either a ping from the user or around current ping.
-function moveNext() {
+function moveNext(account) {
     let minPoi = null;
 
     for (const poi of getActivePointOfInterests()) {
@@ -126,7 +139,6 @@ function moveNext() {
             }
         }
 
-
         if (minPoi.index === 0) {
             // Start with the actual location
             location = minPoi.location;
@@ -141,11 +153,11 @@ function moveNext() {
 
         minPoi.index += 1;
 
-        changeLocation(location);
+        changeLocation(account, location);
     }
 }
 
-function changeLocation(location) {
+function changeLocation(account, location) {
     io.emit('newLocation', location);
     crawl(account, location)
     .then((newPokemons) => {
@@ -154,7 +166,5 @@ function changeLocation(location) {
             emitPokemon(io, pokemon);
         }
     })
-    .catch((error) => {
-        console.log('Error while crawling location:', error.stack || String(error));
-    });
+    .catch(errorHandler('Crawling error'));
 }

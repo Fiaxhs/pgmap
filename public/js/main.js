@@ -37,7 +37,6 @@ function getUserId() {
 
 var map,
     markers = {},
-    scannerCircle,
     clickMarker,
     scanButton,
     currentPosition = [48.869147, 2.3251892],
@@ -94,11 +93,6 @@ function addMapControls () {
     addGeocoder();
     map.addControl(new locateControl());
     scanButton = new scanControl();
-    scannerCircle = L.circle(currentPosition, 50, {
-        clickable: false,
-        fillOpacity: 0.2,
-        opacity:0.2,
-    }).addTo(map);
 
     clickMarker = L.marker(currentPosition);
 }
@@ -158,10 +152,6 @@ function addGeocoder () {
 
 // Center map on given point
 function centerOnPoint(center) {
-    newLocation({
-        latitude : center.lat,
-        longitude : center.lng
-    });
     savePosition(center);
     map.setView([center.lat, center.lng], initZoom);
 }
@@ -282,5 +272,12 @@ socket.on('newLocation', newLocation);
 
 // Update scannerCircle position
 function newLocation (location) {
-    scannerCircle.setLatLng([location.latitude, location.longitude]);
+    var scannerCircle = L.circle([location.latitude, location.longitude], 50, {
+        clickable: false,
+        fillOpacity: 0.2,
+        opacity:0.2,
+    }).addTo(map);
+    setTimeout(function () {
+        scannerCircle.remove();
+    }, 2000);
 }

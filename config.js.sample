@@ -1,10 +1,12 @@
 module.exports = {
 
-    login: {
-        username: '', // Your google email or Pokemon Trainer id
-        password: '', // Your password (eh.)
-        provider: ''  // Either 'google' or 'ptc'
-    },
+    accounts: [
+        {
+            username: '', // Your google email or Pokemon Trainer id
+            password: '', // Your password (eh.)
+            provider: ''  // Either 'google' or 'ptc'
+        },
+    ],
 
     // Create an account on https://www.mapbox.com
     // Then go to https://www.mapbox.com/studio/styles/
