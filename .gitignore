@@ -38,3 +38,11 @@ jspm_packages
 
 # Config
 config.js
+
+# Images from leaflet npm modules
+public/images/leaflet
+public/images/geocoder.png
+public/images/throbber.gif
+
+# Rollup bundle file
+public/js/bundle.js
