@@ -10,6 +10,6 @@ Pokemon GO map, Pokevision style, just for you.
 
 * copy `/config.js.sample` to `/config.js` and fill in the `login` and `leafletURL` parts
 * `npm install`
-
+* `npm run build`
 
 Then `npm run start` and open [http://localhost:3000](http://localhost:3000) in your browser

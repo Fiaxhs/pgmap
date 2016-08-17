@@ -7,17 +7,25 @@
   "dependencies": {
     "express": "^4.14.0",
     "iterator-tools": "^1.0.0-dev.0",
+    "leaflet": "^1.0.0-rc.2",
+    "leaflet-control-geocoder": "^1.5.1",
     "long": "^3.2.0",
     "pokemon-go-node-api": "Armax/Pokemon-GO-node-api",
-    "socket.io": "^1.4.8"
+    "socket.io": "^1.4.8",
+    "whatwg-fetch": "^1.0.0"
   },
   "scripts": {
     "lint": "eslint .",
     "start": "node src/app.js",
+    "build": "rm -rf public/images/leaflet; cp -r node_modules/leaflet/dist/images public/images/leaflet; cp node_modules/leaflet-control-geocoder/dist/images/* public/images; rollup -c",
     "test": "ava"
   },
   "devDependencies": {
     "ava": "^0.15.2",
-    "eslint": "^3.2.2"
+    "eslint": "^3.2.2",
+    "rollup": "^0.34.9",
+    "rollup-plugin-json": "^2.0.1",
+    "rollup-plugin-node-resolve": "^2.0.0",
+    "rollup-plugin-postcss": "^0.1.1"
   }
 }

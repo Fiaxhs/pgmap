@@ -1,4 +1,15 @@
-/*global pokemonList, L, io*/
+'use strict';
+
+import 'whatwg-fetch';
+import 'socket.io-client/socket.io.js';
+import 'leaflet/dist/leaflet.js';
+import 'leaflet/dist/leaflet.css';
+L.Icon.Default.imagePath = "/images/leaflet";
+import 'leaflet-control-geocoder/dist/Control.Geocoder.js';
+import 'leaflet-control-geocoder/dist/Control.Geocoder.css';
+
+import { pokemon } from 'pokemon-go-node-api/pokemons.json';
+var pokemonList = pokemon;
 
 // npm install left-pad alternative.
 function pad(s, chars) {
