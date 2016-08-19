@@ -11,6 +11,14 @@ import 'leaflet-control-geocoder/dist/Control.Geocoder.css';
 import { pokemon } from 'pokemon-go-node-api/pokemons.json';
 var pokemonList = pokemon;
 
+function getPokemonInfos(pokemon) {
+    const id = parseInt(typeof pokemon === 'object' ? pokemon.pokemonid : pokemon);
+    if (isNaN(id) || id < 1 || id > pokemonList.length) {
+        throw new Error('Invalid pokemon id');
+    }
+    return pokemonList[id - 1];
+}
+
 // npm install left-pad alternative.
 function pad(s, chars) {
     return (chars + s).slice(-chars.length);
@@ -222,7 +230,7 @@ function createPopup(pokemon) {
     });
 
     return h('div', { class: 'popup' }, [
-        h('span', { class: 'name' }, pokemonList[pokemon.pokemonid].name),
+        h('span', { class: 'name' }, getPokemonInfos(pokemon).name),
         counter,
     ]);
 }
@@ -263,7 +271,7 @@ function addPokemon(pokemon) {
 
         var marker = L.marker([pokemon.latitude, pokemon.longitude], {
             icon: icon,
-            title: pokemonList[pokemon.pokemonid].name + ' (' + formattedTime + ')',
+            title: getPokemonInfos(pokemon).name + ' (' + formattedTime + ')',
             opacity: pokemon.isLure ? 0.5 : 1
         }).addTo(map);
 
