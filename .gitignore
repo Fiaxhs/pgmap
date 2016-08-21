@@ -1,3 +1,6 @@
+# Config files that have passwords and stuff
+config.js
+
 # Logs
 logs
 *.log

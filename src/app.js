@@ -124,6 +124,9 @@ Promise.all(allAccountsConfig.map(({ username, password, provider }) => {
 // Find next move, either a ping from the user or around current ping.
 function moveNext(account) {
     let minPoi = null;
+    let gridTotalSize = config.gridSize;
+    let gridBy = Math.sqrt(config.gridSize);
+    let initDistFromCenter = Math.floor(gridBy/2);
 
     for (const poi of getActivePointOfInterests()) {
         if (!minPoi || poi.index < minPoi.index) minPoi = poi;
@@ -132,8 +135,8 @@ function moveNext(account) {
     if (minPoi) {
         let location;
 
-        // This means all poi have an index of 9, so reset everything to 0
-        if (minPoi.index === 9) {
+        // This means all poi have an index of configurable gridTotalSize, so reset everything to 0
+        if (minPoi.index === gridTotalSize) {
             for (const poi of getActivePointOfInterests()) {
                 poi.index = 0;
             }
@@ -143,11 +146,15 @@ function moveNext(account) {
             // Start with the actual location
             location = minPoi.location;
         } else {
-            const gridPos = (minPoi.index - 1) % 9;
+
+            const gridPos = (minPoi.index - 1) % gridTotalSize;
+            const x = -step*initDistFromCenter + (Math.floor(gridPos/gridBy) * step)
+            const y = -step*initDistFromCenter + (gridPos % gridBy * step)
+
             location = coordinates.shift(
                 minPoi.location,
-                -step + (Math.floor(gridPos/3) * step),
-                -step + (gridPos % 3 * step)
+                x,
+                y
             );
         }
 
