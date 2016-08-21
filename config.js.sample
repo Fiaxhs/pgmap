@@ -24,5 +24,7 @@ module.exports = {
     },
 
     moveInterval: 10000 // This should match the official application delay between heartbeats
+    ,
+    gridSize: 50 // 50 grid = 10x10 of ~100m circles
 
 };
